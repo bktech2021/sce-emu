@@ -7,9 +7,6 @@ SDL CHIP-8 emulator
 ```
 ./sce <your rom name.ch8>
 -h      Help (here)
--c8     Chip8
--sc     SuperChip
--xo     XOChip
 ```
 ## Keyboard
 ```
