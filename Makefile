@@ -11,7 +11,7 @@ clean:
 	rm -rf ./bin
 
 uninstall:
-	rm /usr/local/bin/sce
+	rm -rf /usr/local/bin/sce
 
 install: uninstall
 	cp ./bin/sce /usr/local/bin

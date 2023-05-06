@@ -164,11 +164,11 @@ load:
             continue;
         }
         emu.emulateCycle();
-        for (int i = 0; i < 2048; i++)
-            pixels[i] = 0;
         if (emu.draw)
         {
             SDL_RenderClear(renderer);
+            for (int i = 0; i < 2048; i++)
+                pixels[i] = 0;
             for (int x = 0; x < 64; x++)
             {
                 for (int y = 0; y < 32; y++)
