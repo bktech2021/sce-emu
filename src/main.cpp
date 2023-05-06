@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 load:
     if (strcmp(argv[1], "-h") == 0)
     {
-        std::cout << "Usage: " << argv[0] << " <rom name>\n";
+        std::cout << "Usage: " << argv[0] << " <rom name>\n-h   Help (here)";
         exit(0);
     }
     else
