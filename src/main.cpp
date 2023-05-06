@@ -7,21 +7,21 @@
 #endif
 
 /*
+    TODO:
     Sound timer, decrementing but not playing
-    Screen, using SDL_Rect, needs to be texture
     Code, needs comments and improvement
     Write speed using SDL_ttf
-
 */
 
 /*
 
-    wip0 .0.1
+    wip0 0.0.1
 
 */
 
 #include <SDL2/SDL.h>
-#include "chip8.h"
+#include "chip8/chip8.h"
+
 bool pause = false;
 unsigned int delay = 5;
 SDL_Event e;
@@ -45,6 +45,7 @@ uint8_t keymap[16] = {
 
 int main(int argc, char **argv)
 {
+    std::cout << "SCE Emulator version pre0.0.1\n";
     int w = 1024;
     int h = 512;
     SDL_Window *window = NULL;
@@ -59,7 +60,30 @@ int main(int argc, char **argv)
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
         exit(2);
     }
+    if (argc < 2)
+    {
+        std::cout << "No file specified.\nUsage: " << argv[0] << " <rom name>\n";
+        exit(4);
+    }
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
+    SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
+    SDL_Texture *pauseTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
+    uint32_t pixels[2048];
+    for (int i = 0; i < 2048; i++)
+        pixels[i] = 0;
+    pixels[(13 * 64) + 30] = 0xFFFFFFFF;
+    pixels[(13 * 64) + 33] = 0xFFFFFFFF;
+    pixels[(14 * 64) + 30] = 0xFFFFFFFF;
+    pixels[(14 * 64) + 33] = 0xFFFFFFFF;
+    pixels[(15 * 64) + 30] = 0xFFFFFFFF;
+    pixels[(15 * 64) + 33] = 0xFFFFFFFF;
+    pixels[(16 * 64) + 30] = 0xFFFFFFFF;
+    pixels[(16 * 64) + 33] = 0xFFFFFFFF;
+    pixels[(17 * 64) + 30] = 0xFFFFFFFF;
+    pixels[(17 * 64) + 33] = 0xFFFFFFFF;
+    pixels[(18 * 64) + 30] = 0xFFFFFFFF;
+    pixels[(18 * 64) + 33] = 0xFFFFFFFF;
+    SDL_UpdateTexture(pauseTexture, NULL, pixels, 64 * sizeof(Uint32));
     SDL_RenderSetLogicalSize(renderer, w, h);
     SDL_Rect pixel;
     pixel.h = 16;
@@ -76,6 +100,7 @@ load:
     {
         emu.load(argv[1]);
     }
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
     while (true)
     {
         SDL_Delay(delay);
@@ -132,25 +157,32 @@ load:
         }
         if (pause)
         {
+            // TODO: Make a pause texture
+            SDL_RenderClear(renderer);
+            SDL_RenderCopy(renderer, pauseTexture, NULL, NULL);
+            SDL_RenderPresent(renderer);
             continue;
         }
         emu.emulateCycle();
-        SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
-        SDL_RenderClear(renderer);
-        SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-        for (int i = 0; i < 64; i++)
+        for (int i = 0; i < 2048; i++)
+            pixels[i] = 0;
+        if (emu.draw)
         {
-            for (int j = 0; j < 32; j++)
+            SDL_RenderClear(renderer);
+            for (int x = 0; x < 64; x++)
             {
-                if (emu.gfx[i + (j * 64)] == 1)
+                for (int y = 0; y < 32; y++)
                 {
-                    pixel.x = i * 16;
-                    pixel.y = j * 16;
-                    SDL_RenderFillRect(renderer, &pixel);
+                    if (emu.gfx[x + (y * 64)] == 1)
+                    {
+                        pixels[x + (y * 64)] = 0xFFFFFFFF;
+                        SDL_UpdateTexture(screenTexture, NULL, pixels, 64 * sizeof(Uint32));
+                    }
                 }
             }
+            SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
+            SDL_RenderPresent(renderer);
         }
-        SDL_RenderPresent(renderer);
     }
 
     return 0;

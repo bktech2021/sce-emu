@@ -19,14 +19,14 @@ private:
     uint16_t I;
 
     uint8_t delay;
-    uint8_t sound;
 
     void init();
 
 public:
     uint8_t gfx[2048];
     uint8_t key[16];
-    
+    uint8_t sound;
+    bool draw;
     void load(char *file);
     void emulateCycle();
 };
