@@ -1,14 +1,17 @@
-all: clean
-	mkdir bin
+all:
 	g++ -c ./src/chip8/chip8.cpp
-	g++ -c ./src/chip8/cpu.cpp
 	g++ -c ./src/main.cpp
-	g++ chip8.o main.o cpu.o -o sce -lSDL2
-	mv ./sce ./bin/sce
-	rm chip8.o cpu.o main.o
+	rm -rf ./bin/
+	mkdir bin
+	mkdir ./bin/textures
+	g++ chip8.o main.o -o ./bin/sce -lSDL2
+	touch ./bin/textures/pauseTexture.bin
+	cp ./src/textures/pauseTexture.bin ./bin/textures/pauseTexture.bin
+	rm chip8.o
+	rm main.o
 
 clean:
-	rm -rf ./bin
+	rm sce
 
 uninstall:
 	rm -rf /usr/local/bin/sce

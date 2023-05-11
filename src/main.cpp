@@ -2,7 +2,6 @@
 
 // Windows mingw compiler
 #define SDL_MAIN_HANDLED
-#include <string.h>
 
 #endif
 
@@ -15,15 +14,20 @@
 
 /*
 
-    wip0 0.0.1
+    v0 0.0.1
 
 */
 
 #include <SDL2/SDL.h>
+#include <chrono>
+#include <thread>
+#include <string.h>
 #include "chip8/chip8.h"
+SDL_Window *window = NULL;
+SDL_Renderer *renderer;
 
 bool pause = false;
-unsigned int delay = 5;
+unsigned int delay = 1600;
 SDL_Event e;
 uint8_t keymap[16] = {
     SDLK_x,
@@ -43,18 +47,57 @@ uint8_t keymap[16] = {
     SDLK_f,
     SDLK_v};
 
+SDL_Texture *loadTexture(std::string path)
+{
+    std::ifstream input(std::string("./textures/").append(path).append("Texture.bin"), std::ios::binary);
+    if (!input)
+    {
+        std::cout << "Texture " << path << " not found.\n";
+        exit(1);
+    }
+    SDL_Texture *fin = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
+    uint8_t *rawscreen = new unsigned char[2048];
+    uint32_t *screen = new unsigned int[2048];
+    for (int i = 0; i < 2048; i++)
+    {
+        rawscreen[i] = 0;
+        screen[i] = 0;
+    }
+    std::vector<unsigned char> buffer((std::istreambuf_iterator<char>(input)), (std::istreambuf_iterator<char>()));
+    for (int i = 0; i < 256; i++)
+    {
+        rawscreen[(8 * i)] = (buffer[i] >> 7);
+        rawscreen[(8 * i) + 1] = (buffer[i] >> 6) & 0b1;
+        rawscreen[(8 * i) + 2] = (buffer[i] >> 5) & 0b1;
+        rawscreen[(8 * i) + 3] = (buffer[i] >> 4) & 0b1;
+        rawscreen[(8 * i) + 4] = (buffer[i] >> 3) & 0b1;
+        rawscreen[(8 * i) + 5] = (buffer[i] >> 2) & 0b1;
+        rawscreen[(8 * i) + 6] = (buffer[i] >> 1) & 0b1;
+        rawscreen[(8 * i) + 7] = (buffer[i]) & 0b1;
+    }
+    for (int i = 0; i < 2048; i++)
+    {
+        if (rawscreen[i])
+            screen[i] = 0xFFFFFFFF;
+    }
+    delete[] screen;
+    delete[] rawscreen;
+    SDL_UpdateTexture(fin, 0, screen, 64 * sizeof(Uint32));
+    return fin;
+}
+
 int main(int argc, char **argv)
 {
-    std::cout << "SCE Emulator version pre0.0.1\n";
+    std::cout << "SCE Emulator version v0.0.1\n";
     int w = 1024;
     int h = 512;
-    SDL_Window *window = NULL;
-    if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0)
     {
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
         exit(1);
     }
     window = SDL_CreateWindow("CHIP-8 Emulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h, SDL_WINDOW_SHOWN);
+    renderer = SDL_CreateRenderer(window, -1, 0);
     if (window == NULL)
     {
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
@@ -65,29 +108,11 @@ int main(int argc, char **argv)
         std::cout << "No file specified.\nUsage: " << argv[0] << " <rom name>\n";
         exit(4);
     }
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_Texture *screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
-    SDL_Texture *pauseTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
+    SDL_Texture *pauseTexture = loadTexture("pause");
     uint32_t pixels[2048];
-    for (int i = 0; i < 2048; i++)
-        pixels[i] = 0;
-    pixels[(13 * 64) + 30] = 0xFFFFFFFF;
-    pixels[(13 * 64) + 33] = 0xFFFFFFFF;
-    pixels[(14 * 64) + 30] = 0xFFFFFFFF;
-    pixels[(14 * 64) + 33] = 0xFFFFFFFF;
-    pixels[(15 * 64) + 30] = 0xFFFFFFFF;
-    pixels[(15 * 64) + 33] = 0xFFFFFFFF;
-    pixels[(16 * 64) + 30] = 0xFFFFFFFF;
-    pixels[(16 * 64) + 33] = 0xFFFFFFFF;
-    pixels[(17 * 64) + 30] = 0xFFFFFFFF;
-    pixels[(17 * 64) + 33] = 0xFFFFFFFF;
-    pixels[(18 * 64) + 30] = 0xFFFFFFFF;
-    pixels[(18 * 64) + 33] = 0xFFFFFFFF;
-    SDL_UpdateTexture(pauseTexture, NULL, pixels, 64 * sizeof(Uint32));
+
     SDL_RenderSetLogicalSize(renderer, w, h);
-    SDL_Rect pixel;
-    pixel.h = 16;
-    pixel.w = 16;
     Chip8 emu;
 
 load:
@@ -101,15 +126,20 @@ load:
         emu.load(argv[1]);
     }
     SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+
+    // Main loop
+    SDL_Rect rect;
+    rect.h = 16;
+    rect.w = 16;
+
     while (true)
     {
-        SDL_Delay(delay);
         while (SDL_PollEvent(&e))
         {
             if (e.type == SDL_QUIT)
                 exit(0);
 
-            if (e.type == SDL_KEYDOWN)
+            else if (e.type == SDL_KEYDOWN)
             {
                 if (e.key.keysym.sym == SDLK_ESCAPE)
                     exit(0);
@@ -119,11 +149,11 @@ load:
                 {
                     if (delay > 1)
                     {
-                        delay--;
+                        delay -= 1000;
                     }
                 }
                 else if (e.key.keysym.sym == SDLK_F3)
-                    delay++;
+                    delay += 1000;
                 else if (e.key.keysym.sym == SDLK_F5)
                 {
                     if (pause)
@@ -157,16 +187,19 @@ load:
         }
         if (pause)
         {
-            // TODO: Make a pause texture
             SDL_RenderClear(renderer);
             SDL_RenderCopy(renderer, pauseTexture, NULL, NULL);
             SDL_RenderPresent(renderer);
             continue;
         }
+
         emu.emulateCycle();
+
         if (emu.draw)
         {
+            SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
             SDL_RenderClear(renderer);
+            SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
             for (int i = 0; i < 2048; i++)
                 pixels[i] = 0;
             for (int x = 0; x < 64; x++)
@@ -175,14 +208,15 @@ load:
                 {
                     if (emu.gfx[x + (y * 64)] == 1)
                     {
-                        pixels[x + (y * 64)] = 0xFFFFFFFF;
-                        SDL_UpdateTexture(screenTexture, NULL, pixels, 64 * sizeof(Uint32));
+                        rect.x = x * 16;
+                        rect.y = y * 16;
+                        SDL_RenderFillRect(renderer, &rect);
                     }
                 }
             }
-            SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
             SDL_RenderPresent(renderer);
         }
+        std::this_thread::sleep_for(std::chrono::microseconds(delay));
     }
 
     return 0;
